@@ -93,7 +93,7 @@ class GrafcanProductExporterDialog(QtGui.QDialog, FORM_CLASS):
             )
             if reply == QtGui.QMessageBox.Yes:
                 directory = QtGui.QFileDialog.getExistingDirectory(
-                    self, 'Selecciona carpeta de destino'
+                    self, u'Selecciona carpeta de destino'
                 )
                 if directory:
                     progressDialog = QtGui.QProgressDialog(self)
@@ -105,7 +105,7 @@ class GrafcanProductExporterDialog(QtGui.QDialog, FORM_CLASS):
                         i += 1
                         progressDialog.setValue(i)
                         progressDialog.setLabelText(
-                            "Copiando fichero %d de %d..." % (i, len(features))
+                            u"Copiando fichero %d de %d..." % (i, len(features))
                         )
                         QtGui.qApp.processEvents()
                         if progressDialog.wasCanceled():

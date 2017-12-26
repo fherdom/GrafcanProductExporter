@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/GrafcanProductExporter" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>

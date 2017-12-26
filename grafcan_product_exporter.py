@@ -20,13 +20,18 @@
  *                                                                         *
  ***************************************************************************/
 """
+import os.path
+import errno
+import shutil
+from datetime import datetime
+
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon
+from PyQt4 import QtGui
+from qgis.core import QgsMapLayerRegistry
 # Initialize Qt resources from file resources.py
 import resources
 # Import the code for the dialog
-from grafcan_product_exporter_dialog import GrafcanProductExporterDialog
-import os.path
+# from grafcan_product_exporter_dialog import GrafcanProductExporterDialog
 
 
 class GrafcanProductExporter:
@@ -64,6 +69,14 @@ class GrafcanProductExporter:
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'GrafcanProductExporter')
         self.toolbar.setObjectName(u'GrafcanProductExporter')
+
+        basedirectory = os.path.dirname(__file__)
+        fillpath = lambda x: os.path.join(basedirectory, x)
+        setting, filenamelog = map(fillpath, ['metadata.txt', 'debug.log'])
+
+        self.DEBUG = True
+
+        self.filenamelog = filenamelog
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -132,10 +145,10 @@ class GrafcanProductExporter:
         """
 
         # Create the dialog (after translation) and keep reference
-        self.dlg = GrafcanProductExporterDialog()
+        # self.dlg = GrafcanProductExporterDialog()
 
-        icon = QIcon(icon_path)
-        action = QAction(icon, text, parent)
+        icon = QtGui.QIcon(icon_path)
+        action = QtGui.QAction(icon, text, parent)
         action.triggered.connect(callback)
         action.setEnabled(enabled_flag)
 
@@ -164,7 +177,8 @@ class GrafcanProductExporter:
         self.add_action(
             icon_path,
             text=self.tr(u'Exportador Distribuidor de productos'),
-            callback=self.run,
+            # callback=self.run,
+            callback=self.process,
             parent=self.iface.mainWindow())
 
     def unload(self):
@@ -188,3 +202,111 @@ class GrafcanProductExporter:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+
+
+    def process(self):
+        """"""
+        self.log('init copy process')
+
+        if self.isLoadLayer('productos'):
+            layerList = QgsMapLayerRegistry.instance(
+            ).mapLayersByName('productos')
+            if layerList:
+                layer = layerList[0]
+            features = layer.selectedFeatures()
+            peso = 0
+            for f in features:
+                peso += int(f['peso'])
+
+            reply = QtGui.QMessageBox.question(
+                self.iface.mainWindow(),
+                u'',
+                u'Va a copiar {0} que ocupan {1:.3f} MB. Desea continuar?'.format( # noqa
+                    len(features),
+                    (peso / 1024.0 / 1000.0)
+                ),
+                QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
+            )
+            if reply == QtGui.QMessageBox.Yes:
+                directory = QtGui.QFileDialog.getExistingDirectory(
+                    self.iface.mainWindow(),
+                    'Selecciona carpeta de destino'
+                )
+                if directory:
+                    progressDialog = QtGui.QProgressDialog(self.iface.mainWindow())
+                    progressDialog.setCancelButtonText("&Cancelar")
+                    progressDialog.setRange(0, len(features))
+                    progressDialog.setWindowTitle("Copiado")
+                    i = 0
+                    for f in features:
+                        i += 1
+                        progressDialog.setValue(i)
+                        progressDialog.setLabelText(
+                            "Copiando fichero %d de %d..." % (i, len(features))
+                        )
+                        QtGui.qApp.processEvents()
+                        if progressDialog.wasCanceled():
+                            break
+                        # self.log("-- {} {}".format(i, len(features)))
+                        src = dest = f['ruta']
+                        src = src.replace('home', 'mnt')
+                        self.copyLargeFile(src, dest)
+                        dest = dest.replace('/home/datos', directory)
+
+                    progressDialog.close()
+                    QtGui.QMessageBox.information(
+                        self.iface.mainWindow(),
+                        u'Mensaje',
+                        u'Proceso completado {0:.3f}MB'.format(
+                            peso / 1024.0 / 1000.0
+                        ),
+                        QtGui.QMessageBox.Ok
+                    )
+                    self.log(
+                        'Copiados {0} {1:.3f}'.format(
+                            len(features), (peso / 1024.0 / 1000)
+                        )
+                    )
+            else:
+                self.log('Copia cancelada')
+
+        self.log('end copy process')
+
+
+    def copyLargeFile(self, src, dest, buffer_size=16000):
+        """
+        :param layerid:
+        :return:
+        """
+        if not os.path.exists(os.path.dirname(dest)):
+            try:
+                os.makedirs(os.path.dirname(dest))
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+        with open(src, 'rb') as fsrc:
+            with open(dest, 'wb') as fdest:
+                shutil.copyfileobj(fsrc, fdest, buffer_size)
+
+
+    def isLoadLayer(self, layername):
+        """
+        :param layerid:
+        :return:
+        """
+        aux = QgsMapLayerRegistry.instance().mapLayersByName(layername)
+        self.log("%s %s" % (aux, layername))
+        return True if len(aux) > 0 else False
+
+
+    def log(self, msg):
+        """
+        :param layerid:
+        :return:
+        """
+        if self.DEBUG:
+            f = open(self.filenamelog, "a")
+            f.write(
+                "%s: %s\n" % (datetime.now(), msg.encode('utf-8'))
+            )
+            f.close()
