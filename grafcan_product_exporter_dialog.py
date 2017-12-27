@@ -105,7 +105,9 @@ class GrafcanProductExporterDialog(QtGui.QDialog, FORM_CLASS):
                         i += 1
                         progressDialog.setValue(i)
                         progressDialog.setLabelText(
-                            u"Copiando fichero %d de %d..." % (i, len(features))
+                            u"Copiando fichero %d de %d..." % (
+                                i, len(features)
+                            )
                         )
                         QtGui.qApp.processEvents()
                         if progressDialog.wasCanceled():
@@ -134,10 +136,7 @@ class GrafcanProductExporterDialog(QtGui.QDialog, FORM_CLASS):
                 self.log('Copia cancelada')
 
     def copyLargeFile(self, src, dest, buffer_size=16000):
-        """
-        :param layerid:
-        :return:
-        """
+        """"""
         if not os.path.exists(os.path.dirname(dest)):
             try:
                 os.makedirs(os.path.dirname(dest))
@@ -152,19 +151,13 @@ class GrafcanProductExporterDialog(QtGui.QDialog, FORM_CLASS):
         pass
 
     def isLoadLayer(self, layername):
-        """
-        :param layerid:
-        :return:
-        """
+        """"""
         aux = QgsMapLayerRegistry.instance().mapLayersByName(layername)
         self.log("%s %s" % (aux, layername))
         return True if len(aux) > 0 else False
 
     def log(self, msg):
-        """
-        :param layerid:
-        :return:
-        """
+        """"""
         if self.DEBUG:
             f = open(self.filenamelog, "a")
             f.write(
