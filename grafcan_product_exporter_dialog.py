@@ -27,13 +27,10 @@
 """
 
 import os
-import errno
-import shutil
-from datetime import datetime
-
 from PyQt4 import QtGui, uic
 
-from qgis.core import QgsMapLayerRegistry
+from utils import Utils
+
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'grafcan_product_exporter_dialog_base.ui'))
@@ -52,115 +49,75 @@ class GrafcanProductExporterDialog(QtGui.QDialog, FORM_CLASS):
 
         self.chkCloud.setVisible(False)
 
-        basedirectory = os.path.dirname(__file__)
-        fillpath = lambda x: os.path.join(basedirectory, x)
-        setting, filenamelog = map(fillpath, ['metadata.txt', 'debug.log'])
+        self.plugin_dir = os.path.dirname(__file__)
 
         # log file
+        self.iface = self
+
+        self.utils = Utils()
+        self.layer = None
+        self.numSelectedFeatures = 0
         self.DEBUG = True
-        self.filenamelog = filenamelog
-        self.log("init appp")
+        self.sleepTime = 100
+        self.setting = os.path.join(self.plugin_dir, 'metadata.txt')
+        self.utils.filenamelog = os.path.join(self.plugin_dir, 'debug.log')
+        self.utils.log("init app")
 
         # events
         self.btnBox.accepted.connect(self.onClick_btnBoxAccepted)
-        self.btnBox.rejected.connect(self.onClick_btnBoxRejected)
+        # self.btnBox.rejected.connect(self.onClick_btnBoxRejected)
 
     def onClick_btnBoxAccepted(self):
-        """
-        :param layerid:
-        :return:
-        """
-        # directory = '/tmp'
-        self.log('init copy')
+        """"""
+        self.utils.log('init copy process')
+        # self.utils.showMessageBar(self.iface, u'init copy proccess')
 
-        if self.isLoadLayer('productos'):
-            layerList = QgsMapLayerRegistry.instance(
-            ).mapLayersByName('productos')
-            if layerList:
-                layer = layerList[0]
-            features = layer.selectedFeatures()
-            peso = 0
-            for f in features:
-                peso += int(f['peso'])
+        # check layer, fields
+        self.layer = self.utils.isValidLayer('productos', [u'ruta', u'peso'])
+        if not self.layer:
+            # self.utils.showMessageBar(self.iface, u'Capa no válida')
+            self.utils.showMessage(self.iface, u'Capa no válida')
+            return False
 
-            reply = QtGui.QMessageBox.question(
-                self, u'',
-                u'Va a copiar {0} que ocupan {1:.3f} MB. Desea continuar?'.format( # noqa
-                    len(features),
-                    (peso / 1024.0 / 1000.0)
-                ),
-                QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
-            )
-            if reply == QtGui.QMessageBox.Yes:
-                directory = QtGui.QFileDialog.getExistingDirectory(
-                    self, u'Selecciona carpeta de destino'
+        # check num selected
+        self.numSelectedFeatures = self.layer.selectedFeatureCount()
+        if self.numSelectedFeatures == 0 or \
+                self.numSelectedFeatures > 1000:
+                self.utils.showMessage(
+                    self.iface,
+                    u'Debe seleccionar entre 1 y 1000 elementos',
                 )
-                if directory:
-                    progressDialog = QtGui.QProgressDialog(self)
-                    progressDialog.setCancelButtonText("&Cancelar")
-                    progressDialog.setRange(0, len(features))
-                    progressDialog.setWindowTitle("Copiado")
-                    i = 0
-                    for f in features:
-                        i += 1
-                        progressDialog.setValue(i)
-                        progressDialog.setLabelText(
-                            u"Copiando fichero %d de %d..." % (
-                                i, len(features)
-                            )
-                        )
-                        QtGui.qApp.processEvents()
-                        if progressDialog.wasCanceled():
-                            break
-                        # self.log("-- {} {}".format(i, len(features)))
-                        src = dest = f['ruta']
-                        src = src.replace('home', 'mnt')
-                        dest = dest.replace('/home/datos', directory)
-                        self.copyLargeFile(src, dest)
+                return False
 
-                    progressDialog.close()
-                    QtGui.QMessageBox.information(
-                        self,
-                        u'Mensaje',
-                        u'Proceso completado {0:.3f}MB'.format(
-                            peso / 1024.0 / 1000.0
-                        ),
-                        QtGui.QMessageBox.Ok
-                    )
-                    self.log(
-                        'Copiados {0} {1:.3f}'.format(
-                            len(features), (peso / 1024.0 / 1000)
-                        )
-                    )
-            else:
-                self.log('Copia cancelada')
+        # calculate size
+        peso = self.utils.calPesoRequest(self.iface, self.layer)
+        # peso = self.utils.calPeso(self.iface, self.layer)
+        # self.utils.showMessageBar(self.iface, u'{}'.format(peso))
 
-    def copyLargeFile(self, src, dest, buffer_size=16000):
-        """"""
-        if not os.path.exists(os.path.dirname(dest)):
-            try:
-                os.makedirs(os.path.dirname(dest))
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-        with open(src, 'rb') as fsrc:
-            with open(dest, 'wb') as fdest:
-                shutil.copyfileobj(fsrc, fdest, buffer_size)
-
-    def onClick_btnBoxRejected(self):
-        pass
-
-    def isLoadLayer(self, layername):
-        """"""
-        aux = QgsMapLayerRegistry.instance().mapLayersByName(layername)
-        self.log("%s %s" % (aux, layername))
-        return True if len(aux) > 0 else False
-
-    def log(self, msg):
-        """"""
-        if self.DEBUG:
-            f = open(self.filenamelog, "a")
-            f.write(
-                "%s: %s\n" % (datetime.now(), msg.encode('utf-8'))
+        # ask for confirmation
+        reply = QtGui.QMessageBox.question(
+            self.iface,
+            u'',
+            u'Va a copiar {0} que ocupan {1:.3f} MB. Desea continuar?'.format( # noqa
+                self.numSelectedFeatures,
+                (peso / 1024.0 / 1000.0)
+            ),
+            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No
+        )
+        if reply == QtGui.QMessageBox.Yes:
+            directory = QtGui.QFileDialog.getExistingDirectory(
+                self.iface,
+                u'Selecciona carpeta de destino'
             )
-            f.close()
+
+            # copy files
+            self.utils.copyRutaRequest(
+                self.iface,
+                self.layer,
+                self.numSelectedFeatures,
+                peso,
+                directory
+            )
+        else:
+            return False
+        return True

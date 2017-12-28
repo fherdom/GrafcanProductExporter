@@ -22,24 +22,17 @@
  * https://nyalldawson.net/2016/10/speeding-up-your-pyqgis-scripts/
 """
 import os.path
-import errno
-import shutil
-import time
-from datetime import datetime
 
 from PyQt4.QtCore import (
-    QSettings, QTranslator, qVersion, QCoreApplication, Qt, QTimer
+    QSettings, QTranslator, qVersion, QCoreApplication
 )
 from PyQt4 import QtGui
-from qgis.core import QgsMapLayerRegistry, QgsFeatureRequest
+
 # Initialize Qt resources from file resources.py
 import resources
 # Import the code for the dialog
-# from grafcan_product_exporter_dialog import GrafcanProductExporterDialog
+from grafcan_product_exporter_dialog import GrafcanProductExporterDialog
 from utils import Utils
-
-
-RUTA = '/mnt'
 
 
 class GrafcanProductExporter:
@@ -73,8 +66,6 @@ class GrafcanProductExporter:
         self.DEBUG = True
         self.sleepTime = 100
         self.setting = os.path.join(self.plugin_dir, 'metadata.txt')
-
-        self.utils = Utils()
         self.utils.filenamelog = os.path.join(self.plugin_dir, 'debug.log')
         self.utils.log("init app")
 
@@ -97,7 +88,7 @@ class GrafcanProductExporter:
     ):
         """Add a toolbar icon to the toolbar."""
         # Create the dialog (after translation) and keep reference
-        # self.dlg = GrafcanProductExporterDialog()
+        self.dlg = GrafcanProductExporterDialog()
         icon = QtGui.QIcon(icon_path)
         action = QtGui.QAction(icon, text, parent)
         action.triggered.connect(callback)

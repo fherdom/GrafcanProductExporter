@@ -2,10 +2,10 @@
 import os.path
 import errno
 import shutil
+import timeit
 from datetime import datetime
 
-from PyQt4 import QtGui
-from PyQt4.QtCore import (Qt)
+from PyQt4 import QtGui, QtCore
 from qgis.core import QgsMapLayerRegistry, QgsFeatureRequest
 
 RUTA = '/mnt'
@@ -17,6 +17,7 @@ class Utils:
         """"""
         self.DEBUG = True
         self.filenamelog = None
+        self.list = []
 
     def log(self, msg):
         """"""
@@ -51,45 +52,29 @@ class Utils:
         field_names = set([field.name() for field in layer.pendingFields()])
         return layer if set(fields).issubset(field_names) else None
 
-    def step_001(self):
+    def calPesoRequest(self, iface, layer):
         """"""
-        self.iface.messageBar().pushInfo(
-            u"Exportador:", u"Calculando peso"
-        )
-
-    def step_002(self, layer):
-        """"""
-        if self.DEBUG:
-            self.log('calculate peso')
-        request = QgsFeatureRequest(
-        ).setFlags(
+        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(
+            QtCore.Qt.WaitCursor))
+        # request
+        request = QgsFeatureRequest().setFlags(
             QgsFeatureRequest.NoGeometry
         ).setSubsetOfAttributes(
-            ['peso'], layer.fields()
+            ['pk', 'peso', 'ruta'], layer.fields()
         ).setFilterFids(
             layer.selectedFeaturesIds()
         )
+        start = timeit.default_timer()
         peso = 0
-        # for idx, f in enumerate(layer.selectedFeatures()):
-        for idx, f in enumerate(layer.getFeatures(request)):
-            peso += int(f['peso'])
-            self.log('{}'.format(peso))
-        if self.DEBUG:
-            self.log('end calculate peso')
-
-    def calPesoRequest(self, iface, layer):
-        """"""
-        # request
-        request = QgsFeatureRequest()
-        request.setFlags(QgsFeatureRequest.NoGeometry)
-        request.setSubsetOfAttributes(['peso'], layer.fields())
-        request.setFilterFids(layer.selectedFeaturesIds())
-        peso = 0
-
-        # TODO: 171227, problem with enumerate(layer.getFeatures(request))
-        # is very slow!!!!
-        for idx, feature in enumerate(layer.getFeatures(request)):
+        for idx, feature in enumerate(layer.getFeatures(request)): # TODO: 171227, problem with enumerate(layer.getFeatures(request)) is very slow!!!!
             peso += int(feature['peso'])
+            self.list.append([feature['pk'], feature['peso'], feature['ruta']])
+
+        stop = timeit.default_timer()
+        total_time = stop - start
+        if self.DEBUG:
+            self.log('calPesoRequest {}, time: {}'.format(peso, total_time))
+        QtGui.QApplication.restoreOverrideCursor()
         return peso
 
     def calPeso(self, iface, layer):
@@ -135,11 +120,14 @@ class Utils:
         """
 
         # request
+        """
         request = QgsFeatureRequest()
         request.setFlags(QgsFeatureRequest.NoGeometry)
         request.setSubsetOfAttributes(['ruta'], layer.fields())
         request.setFilterFids(layer.selectedFeaturesIds())
-        for idx, f in enumerate(layer.getFeatures(request)):
+        """
+        # for idx, f in enumerate(layer.getFeatures(request)):
+        for idx, f in enumerate(self.list):
 
             # option #1
             progressDialog.setValue(idx)
@@ -158,10 +146,14 @@ class Utils:
             )
             """
 
-            src = dest = f['ruta']
+            # src = dest = f['ruta']
+            src = dest = f[2]
             src = src.replace('home', RUTA)
             dest = dest.replace('/home/datos', directory)
+            QtGui.QApplication.setOverrideCursor(QtGui.QCursor(
+                QtCore.Qt.WaitCursor))
             self.copyLargeFile(src, dest)
+            QtGui.QApplication.restoreOverrideCursor()
 
         progressDialog.close()
 
@@ -179,3 +171,29 @@ class Utils:
         )
 
     ############################################################
+
+    def step_001(self):
+        """"""
+        self.iface.messageBar().pushInfo(
+            u"Exportador:", u"Calculando peso"
+        )
+
+    def step_002(self, layer):
+        """"""
+        if self.DEBUG:
+            self.log('calculate peso')
+        request = QgsFeatureRequest(
+        ).setFlags(
+            QgsFeatureRequest.NoGeometry
+        ).setSubsetOfAttributes(
+            ['peso'], layer.fields()
+        ).setFilterFids(
+            layer.selectedFeaturesIds()
+        )
+        peso = 0
+        # for idx, f in enumerate(layer.selectedFeatures()):
+        for idx, f in enumerate(layer.getFeatures(request)):
+            peso += int(f['peso'])
+            self.log('{}'.format(peso))
+        if self.DEBUG:
+            self.log('end calculate peso')
