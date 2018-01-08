@@ -141,12 +141,10 @@ class GrafcanProductExporter:
     def process(self):
         """"""
         self.utils.log('init copy process')
-        # self.utils.showMessageBar(self.iface, u'init copy proccess')
 
         # check layer, fields
         self.layer = self.utils.isValidLayer('productos', [u'ruta', u'peso'])
         if not self.layer:
-            # self.utils.showMessageBar(self.iface, u'Capa no válida')
             self.utils.showMessage(self.iface, u'Capa no válida')
             return False
 
@@ -162,8 +160,6 @@ class GrafcanProductExporter:
 
         # calculate size
         peso = self.utils.calPesoRequest(self.iface, self.layer)
-        # peso = self.utils.calPeso(self.iface, self.layer)
-        # self.utils.showMessageBar(self.iface, u'{}'.format(peso))
 
         # ask for confirmation
         reply = QtGui.QMessageBox.question(

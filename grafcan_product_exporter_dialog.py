@@ -20,10 +20,6 @@
  *                                                                         *
  ***************************************************************************/
 
-
- # ProgressBar: https://fredrikaverpil.github.io/2015/05/12/file-copy-progress-window-with-pyqt-pyside-and-shutil/
- # http://nullege.com/codes/show/src@p@y@PyQt4-HEAD@examples@dialogs@findfiles.py/87/PyQt4.QtGui.QFileDialog.getExistingDirectory
-
 """
 
 import os
@@ -70,7 +66,6 @@ class GrafcanProductExporterDialog(QtGui.QDialog, FORM_CLASS):
     def onClick_btnBoxAccepted(self):
         """"""
         self.utils.log('init copy process')
-        # self.utils.showMessageBar(self.iface, u'init copy proccess')
 
         # check layer, fields
         self.layer = self.utils.isValidLayer('productos', [u'ruta', u'peso'])
@@ -91,8 +86,6 @@ class GrafcanProductExporterDialog(QtGui.QDialog, FORM_CLASS):
 
         # calculate size
         peso = self.utils.calPesoRequest(self.iface, self.layer)
-        # peso = self.utils.calPeso(self.iface, self.layer)
-        # self.utils.showMessageBar(self.iface, u'{}'.format(peso))
 
         # ask for confirmation
         reply = QtGui.QMessageBox.question(

@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+"""
+from os import sep
 import os.path
 import errno
 import shutil
@@ -8,7 +11,8 @@ from datetime import datetime
 from PyQt4 import QtGui, QtCore
 from qgis.core import QgsMapLayerRegistry, QgsFeatureRequest
 
-RUTA = '/mnt'
+# RUTA = '/mnt'
+RUTA = '//192.168.60.37'
 
 
 class Utils:
@@ -66,7 +70,7 @@ class Utils:
         )
         start = timeit.default_timer()
         peso = 0
-        for idx, feature in enumerate(layer.getFeatures(request)): # TODO: 171227, problem with enumerate(layer.getFeatures(request)) is very slow!!!!
+        for idx, feature in enumerate(layer.getFeatures(request)):
             peso += int(feature['peso'])
             self.list.append([feature['pk'], feature['peso'], feature['ruta']])
 
@@ -108,25 +112,6 @@ class Utils:
         progressDialog.setRange(0, numSelectedFeatures)
         progressDialog.setWindowTitle("Copiando")
 
-        """
-        # option #2
-        progress = QtGui.QProgressBar()
-        progress.setMaximum(self.numSelectedFeatures)
-        progress.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        progressMessageBar.layout().addWidget(progress)
-        iface.messageBar().pushWidget(
-            progressMessageBar, iface.messageBar().INFO
-        )
-        """
-
-        # request
-        """
-        request = QgsFeatureRequest()
-        request.setFlags(QgsFeatureRequest.NoGeometry)
-        request.setSubsetOfAttributes(['ruta'], layer.fields())
-        request.setFilterFids(layer.selectedFeaturesIds())
-        """
-        # for idx, f in enumerate(layer.getFeatures(request)):
         for idx, f in enumerate(self.list):
 
             # option #1
@@ -138,18 +123,10 @@ class Utils:
             if progressDialog.wasCanceled():
                 return False
 
-            # option #2
-            """
-            percent = idx / float(self.numSelectedFeatures) * 100
-            iface.mainWindow().statusBar().showMessage(
-                "Processed {} %".format(int(percent))
-            )
-            """
-
-            # src = dest = f['ruta']
             src = dest = f[2]
-            src = src.replace('home', RUTA)
-            dest = dest.replace('/home/datos', directory)
+            src = src.replace('/home' , RUTA)
+            dest = dest.replace('/home', directory)
+            self.log("Copiando {} en {}".format(src, dest))
             QtGui.QApplication.setOverrideCursor(QtGui.QCursor(
                 QtCore.Qt.WaitCursor))
             self.copyLargeFile(src, dest)
@@ -157,43 +134,9 @@ class Utils:
 
         progressDialog.close()
 
-        # option #2
-        """
-        iface.messageBar().clearWidgets()
-        iface.mainWindow().statusBar().clearMessage()
-        """
-
         self.showMessage(
             iface,
             u'Proceso completado {0:.3f}MB'.format(
                 peso / 1024.0 / 1000.0
             )
         )
-
-    ############################################################
-
-    def step_001(self):
-        """"""
-        self.iface.messageBar().pushInfo(
-            u"Exportador:", u"Calculando peso"
-        )
-
-    def step_002(self, layer):
-        """"""
-        if self.DEBUG:
-            self.log('calculate peso')
-        request = QgsFeatureRequest(
-        ).setFlags(
-            QgsFeatureRequest.NoGeometry
-        ).setSubsetOfAttributes(
-            ['peso'], layer.fields()
-        ).setFilterFids(
-            layer.selectedFeaturesIds()
-        )
-        peso = 0
-        # for idx, f in enumerate(layer.selectedFeatures()):
-        for idx, f in enumerate(layer.getFeatures(request)):
-            peso += int(f['peso'])
-            self.log('{}'.format(peso))
-        if self.DEBUG:
-            self.log('end calculate peso')
